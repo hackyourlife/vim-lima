@@ -171,6 +171,14 @@ def lima_save():
 	vim.command('setl nomodified')
 
 def lima_login():
+	global lima
+	if lima is None or not lima.isLoggedIn():
+		lima = lima_do_login()
+		if not lima:
+			return False
+	return True
+
+def lima_do_login():
 	url = vim.eval('g:limacity_url')
 	username = vim.eval('g:limacity_username')
 	password = vim.eval('g:limacity_password')
@@ -192,10 +200,7 @@ def lima_login():
 
 def lima_thread_open(thread, page=0, perpage=100, reload=False):
 	global lima
-	if lima is None:
-		lima = lima_login()
-		if not lima:
-			return
+	if not lima_login(): return
 
 	data = lima.getThread(thread, page, perpage)
 	if reload:
@@ -268,10 +273,7 @@ def lima_boards():
 
 def lima_boards():
 	global lima
-	if lima is None:
-		lima = lima_login()
-		if not lima:
-			return
+	if not lima_login(): return
 	lima_create_buffer('LIMA:Homepage')
 	vim.command('setl buftype=nofile')
 	vim.current.buffer[:] = [ 'Foren auf lima-city', '' ]
@@ -290,10 +292,7 @@ def lima_board_open():
 
 def lima_home(refresh=False):
 	global lima
-	if lima is None:
-		lima = lima_login()
-		if not lima:
-			return
+	if not lima_login(): return
 
 	if refresh:
 		vim.command('setl modifiable')
@@ -335,10 +334,7 @@ def lima_home(refresh=False):
 
 def lima_thread_open_interactive():
 	global lima
-	if lima is None:
-		lima = lima_login()
-		if not lima:
-			return
+	if not lima_login(): return
 	row = vim.current.window.cursor[0]
 	column = vim.current.window.cursor[1]
 	line = vim.current.buffer[row - 1]
@@ -349,9 +345,6 @@ def lima_thread_open_interactive():
 
 def lima_thread_by_id(postid):
 	global lima
-	if lima is None:
-		lima = lima_login()
-		if not lima:
-			return
+	if not lima_login(): return
 	data = lima.getPostThread(postid)
 	lima_thread_open(data.name, data.page, data.perpage)
