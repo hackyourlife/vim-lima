@@ -57,6 +57,9 @@ function! g:lima_homepage_syntax()
 		" current user
 		syntax match limaUser /Benutzer: [-a-z0-9_]*$/
 
+		" famous
+		syntax match limaFamous /^Berühmt für 15 Minuten$/
+
 		" newest posts header
 		syntax match limaNewest /^Neueste.*$/
 
@@ -79,6 +82,7 @@ function! g:lima_homepage_syntax()
 
 		" color mapping
 		highlight default link limaUser Statement
+		highlight default link limaFamous Function
 		highlight default link limaNewest Function
 		highlight default link limaPostID Number
 		highlight default link limaThreadFlags Comment
@@ -101,6 +105,11 @@ function! g:lima_user_highlight()
 		highlight default link limaBadUsers Error
 		highlight default link limaGoodUsers Keyword
 	endif
+endfunction
+
+function LimaThreadFoldText()
+	let line = getline(v:foldstart)
+	return v:folddashes . line
 endfunction
 
 python << EOF
@@ -207,7 +216,7 @@ def lima_thread_open(thread, page=0, perpage=100, reload=False):
 		vim.command('setl modifiable')
 		vim.current.buffer[:] = []
 	else:
-		lima_create_buffer('LIMA:/' + thread)
+		lima_create_buffer('LIMA://' + thread)
 		lima_set_temp_buffer()
 
 	def format_bbcode(tree):
@@ -244,17 +253,35 @@ def lima_thread_open(thread, page=0, perpage=100, reload=False):
 				text += '\n'
 		return text
 
+	line = 3
+	folds = []
 	content = u'Thread: %s\n\n' % data.name
 	for post in data.posts:
 		content += u'%s: %s (%s, %s)\n' % (post.id, post.user.name, u'Gelöscht' if post.user.deleted else u'%s, %s Gulden' % (post.user.rank, post.user.gulden), post.date)
-		content += format_bbcode(post.content).strip()
+		bbcode = format_bbcode(post.content).strip()
+		content += bbcode
 		content += '\n\n\n'
+		length = len(bbcode.splitlines()) + 2
+		folds.append({'start':line, 'length':length})
+		line += length + 1
+	folds[len(folds) - 1]['length'] -= 2
 
 	vim.current.buffer[:] = content.strip().encode('utf-8').splitlines()
 	vim.command('setl filetype=limacity')
 	vim.command('call g:lima_user_highlight()')
+
+	# create folds
+	vim.command('setl foldtext=LimaThreadFoldText()')
+	vim.command('setl foldmethod=manual')
+	for fold in folds:
+		vim.command('exec "%d,%dfold"' % (fold['start'], (fold['start'] + fold['length'])))
+
 	vim.command('map <silent> <buffer> <F5> :py lima_thread_refresh("%s", %s, %s)<cr>' % (thread, page, perpage)) # allow refreshing
 	vim.command('setl nomodifiable')
+
+	# open last fold
+	vim.command('normal G')
+	vim.command('normal zo')
 
 def lima_thread_refresh(thread, page, perpage):
 	lima_thread_open(thread, page, perpage, True)
@@ -274,13 +301,13 @@ def lima_boards():
 def lima_boards():
 	global lima
 	if not lima_login(): return
-	lima_create_buffer('LIMA:Homepage')
+	lima_create_buffer('LIMA:Boards')
 	vim.command('setl buftype=nofile')
 	vim.current.buffer[:] = [ 'Foren auf lima-city', '' ]
 	boards = lima.getBoards()
 	for board in boards:
 		vim.current.buffer.append('• ' + board.name)
-	vim.current.buffer.append('\nDrücke <Enter> um den Thread anzusehen.'.splitlines())
+	vim.current.buffer.append('\nDrücke <Enter> um das Forum zu öffnen.'.splitlines())
 	vim.command('map <silent> <buffer> <Enter> :py lima_board_open()<cr>')
 	vim.command('setl nomodified')
 	vim.command('setl nomodifiable')
