@@ -33,6 +33,7 @@ let loaded_limavim = 1
 command! -nargs=1 LimaOpen exec('py lima_thread_open(<f-args>)')
 command! -nargs=0 LimaHome exec('py lima_home()')
 command! -nargs=0 LimaBoards exec('py lima_boards()')
+command! -nargs=1 LimaOpenPost exec('py lima_thread_by_post_id(<f-args>)')
 
 if !exists("g:limacity_followkey")
 	let g:limacity_followkey = '<F12>'
@@ -77,7 +78,8 @@ function! g:lima_homepage_syntax()
 
 		" to highlight some keywords
 		syntax case ignore
-		syntax match limaThreadKeywords "\(Technik und Elektronik\|PHP\|MySQL\|Netz\(werke\?\)\?\|Homepage\|\.htaccess\|Java\|Python\|Linux\)"
+		syntax match limaThreadKeywords "\(Technik und Elektronik\|PHP\|MySQL\|Netz\(werke\?\)\?\|Homepage\|\.\?htaccess\|Java\(script\)\?\|Python\|Linux\)"
+		syntax match limaThreadBadKeywords "\(Spam-Forum\|Reallife\|Literatur und Kunst\|Beauty & Wellness\|Sport\)"
 		syntax case match
 
 		" color mapping
@@ -93,6 +95,7 @@ function! g:lima_homepage_syntax()
 		highlight default link limaThreadAuthor Statement
 		highlight default link limaThreadDate PreProc
 		highlight default link limaThreadKeywords Todo
+		highlight default link limaThreadBadKeywords Error
 	endif
 endfunction
 
@@ -216,7 +219,7 @@ def lima_thread_open(thread, page=0, perpage=100, reload=False):
 		vim.command('setl modifiable')
 		vim.current.buffer[:] = []
 	else:
-		lima_create_buffer('LIMA://' + thread)
+		lima_create_buffer('lima://%s/read' % thread)
 		lima_set_temp_buffer()
 
 	def format_bbcode(tree):
@@ -277,6 +280,8 @@ def lima_thread_open(thread, page=0, perpage=100, reload=False):
 		vim.command('exec "%d,%dfold"' % (fold['start'], (fold['start'] + fold['length'])))
 
 	vim.command('map <silent> <buffer> <F5> :py lima_thread_refresh("%s", %s, %s)<cr>' % (thread, page, perpage)) # allow refreshing
+	vim.command('map <silent> <buffer> <C-R> :py lima_thread_refresh("%s", %s, %s)<cr>' % (thread, page, perpage)) # <C-R> = refresh
+	vim.command('map <silent> <buffer> p :py lima_thread_write("%s")<cr>' % thread)
 	vim.command('setl nomodifiable')
 
 	# open last fold
@@ -287,22 +292,31 @@ def lima_thread_refresh(thread, page, perpage):
 	lima_thread_open(thread, page, perpage, True)
 
 def lima_thread_write(thread):
+	lima_create_buffer('lima://%s/post' % thread)
 	undolevels = vim.eval('&undolevels')
 	vim.command('setl undolevels=-1')
-	vim.current.buffer[:] = content.encode('utf-8').splitlines()
+	vim.current.buffer[:] = []
 	vim.command('let &undolevels = %s' % undolevels)
-	vim.command('autocmd BufWriteCmd <buffer> py lima_thread_save()')
+	vim.command('autocmd BufWriteCmd <buffer> py lima_thread_save("%s")' % thread)
 	vim.command(':runtime ftplugin/limacity.vim')
 	vim.command('setl nomodified')
 
-def lima_boards():
-	pass
+def lima_thread_save(thread):
+	global lima
+	if not lima_login(): return
+	confirm = vim_input('Do you really want to post (yes/NO)?')
+	if not confirm.lower() in ['y', 'yes']:
+		return
+	text = '\n'.join(vim.current.buffer)
+	lima.postInThread(thread, text)
+	echomsg('"%s" %dL, %dC posted' % (thread, len(vim.current.buffer), len(text)))
+	vim.command('setl nomodified')
 
 def lima_boards():
 	global lima
 	if not lima_login(): return
-	lima_create_buffer('LIMA:Boards')
-	vim.command('setl buftype=nofile')
+	lima_create_buffer('lima://boards')
+	lima_set_temp_buffer()
 	vim.current.buffer[:] = [ 'Foren auf lima-city', '' ]
 	boards = lima.getBoards()
 	for board in boards:
@@ -324,7 +338,7 @@ def lima_home(refresh=False):
 	if refresh:
 		vim.command('setl modifiable')
 	else:
-		lima_create_buffer('LIMA:Homepage')
+		lima_create_buffer('lima://homepage')
 		lima_set_temp_buffer()
 
 	vim.current.buffer[:] = [ 'Lima-City (http://www.lima-city.de/), Benutzer: ' + lima.username, '' ]
@@ -353,6 +367,7 @@ def lima_home(refresh=False):
 	vim.current.buffer.append('Drücke <Enter> um den Thread anzusehen.'.splitlines())
 	vim.command('map <silent> <buffer> <Enter> :py lima_thread_open_interactive()<cr>')
 	vim.command('map <silent> <buffer> <F5> :py lima_home(True)<cr>') # allow refreshing
+	vim.command('map <silent> <buffer> <C-R> :py lima_home(True)<cr>') # allow refreshing
 	vim.command('setl filetype=limahome')
 	vim.command('call g:lima_homepage_syntax()')
 	vim.command('call g:lima_user_highlight()')
@@ -368,9 +383,9 @@ def lima_thread_open_interactive():
 	wordtype = vim.eval('synIDattr(synID(line("."), 1, 1), "name")')
 	if wordtype == 'limaPostID':
 		postid = line.split()[0]
-		lima_thread_by_id(postid)
+		lima_thread_by_post_id(postid)
 
-def lima_thread_by_id(postid):
+def lima_thread_by_post_id(postid):
 	global lima
 	if not lima_login(): return
 	data = lima.getPostThread(postid)
