@@ -15,7 +15,6 @@
 " along with this program; if not, write to the Free Software Foundation,
 " Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 "
-" Version:	1.0
 " Config:	set variables in ~/.vimrc
 "#######################################################################
 
@@ -51,6 +50,10 @@ if !exists("g:limacity_password")
 	let g:limacity_password = ''
 endif
 
+if !exists("g:limacity_spell")
+	let g:limacity_spell = 1
+endif
+
 function! g:lima_homepage_syntax()
 	if has("syntax") && exists("g:syntax_on")
 		syntax clear
@@ -83,19 +86,45 @@ function! g:lima_homepage_syntax()
 		syntax case match
 
 		" color mapping
-		highlight default link limaUser Statement
-		highlight default link limaFamous Function
-		highlight default link limaNewest Function
-		highlight default link limaPostID Number
-		highlight default link limaThreadFlags Comment
-		highlight default link limaFlagSticky Todo
-		highlight default link limaFlagImportant Error
-		highlight default link limaFlagClosed Type
-		"highlight default link limaThreadInfo Comment
-		highlight default link limaThreadAuthor Statement
-		highlight default link limaThreadDate PreProc
-		highlight default link limaThreadKeywords Todo
-		highlight default link limaThreadBadKeywords Error
+		highlight default link limaUser			Statement
+		highlight default link limaFamous		Function
+		highlight default link limaNewest		Function
+		highlight default link limaPostID		Number
+		highlight default link limaThreadFlags		Comment
+		highlight default link limaFlagSticky		Todo
+		highlight default link limaFlagImportant	Error
+		highlight default link limaFlagClosed		Type
+		"highlight default link limaThreadInfo		Comment
+		highlight default link limaThreadAuthor		Statement
+		highlight default link limaThreadDate		PreProc
+		highlight default link limaThreadKeywords	Todo
+		highlight default link limaThreadBadKeywords	Error
+	endif
+endfunction
+
+function! g:lima_thread_post_caption(line)
+	if has("syntax") && exists("g:syntax_on")
+		exec "syntax region limaPostCaption start=/\\%" . a:line . "l/ end=/\\%" . (a:line + 1) . "l/ contains=limaPostID,limaPostInfo,limaPostUser"
+	endif
+endfunction
+
+function! g:lima_thread_highlight()
+	if has("syntax") && exists("g:syntax_on")
+		syntax region limaThreadInfo start=/\%1l/ end=/\%4l/ contains=limaThreadLabel
+		syntax match limaThreadLabel "^.\{-}:" contained
+
+		syntax match limaPostID "^[0-9]\+" contained
+		syntax match limaPostInfo "(.*)$" contained contains=limaPostInfoNumbers
+		syntax match limaPostInfoNumbers "[0-9]\+ " contained
+		syntax match limaPostStart "^[0-9]\: .* (.\{-})$" contained contains=limaPostUser
+		syntax match limaPostUser "[-a-z0-9]\+ " contained contains=limaGoodUsers,limaBadUsers
+
+		" color mappings
+		highlight default link limaPostID		Number
+		highlight default link limaPostInfo		Comment
+		highlight default link limaPostInfoNumbers	Number
+		highlight default link limaPostUser		Type
+		highlight default link limaThreadLabel		PreProc
 	endif
 endfunction
 
@@ -103,7 +132,7 @@ function! g:lima_user_highlight()
 	if has("syntax") && exists("g:syntax_on")
 		" Modify the following lines to suit your needs
 		syntax keyword limaBadUsers hpage php-test1
-		syntax keyword limaGoodUsers fatfox hackyourlife fatfreddy ggamee voloya tchab
+		syntax keyword limaGoodUsers fatfox hackyourlife bladehunter fatfreddy ggamee voloya tchab
 		syntax keyword limaGoodUsers kochmarkus thomasba davidmuc burgi djfun lordoflima
 		highlight default link limaBadUsers Error
 		highlight default link limaGoodUsers Keyword
@@ -252,13 +281,15 @@ def lima_thread_open(thread, page=0, perpage=100, reload=False):
 				text += u'[youtube]https://youtu.be/%s[/youtube]' % node.video
 			elif node.tag == 'math':
 				text += u'[math]%s[/math]' % node.raw
+			elif node.tag == 'img':
+				text += node.alt
 			elif node.tag == u'br':
 				text += '\n'
 		return text
 
-	line = 3
+	line = 5
 	folds = []
-	content = u'Thread: %s\n\n' % data.name
+	content = u'Thread:         %s\nForum:          %s\nKann antworten: %s\n\n' % (data.name, data.forum.name, "ja" if data.writable else "nein")
 	for post in data.posts:
 		content += u'%s: %s (%s, %s)\n' % (post.id, post.user.name, u'Gelöscht' if post.user.deleted else u'%s, %s Gulden' % (post.user.rank, post.user.gulden), post.date)
 		bbcode = format_bbcode(post.content).strip()
@@ -271,12 +302,14 @@ def lima_thread_open(thread, page=0, perpage=100, reload=False):
 
 	vim.current.buffer[:] = content.strip().encode('utf-8').splitlines()
 	vim.command('setl filetype=limacity')
+	vim.command('call g:lima_thread_highlight()')
 	vim.command('call g:lima_user_highlight()')
 
 	# create folds
 	vim.command('setl foldtext=LimaThreadFoldText()')
 	vim.command('setl foldmethod=manual')
 	for fold in folds:
+		vim.command('call g:lima_thread_post_caption(%d)' % fold['start'])
 		vim.command('exec "%d,%dfold"' % (fold['start'], (fold['start'] + fold['length'])))
 
 	vim.command('map <silent> <buffer> <F5> :py lima_thread_refresh("%s", %s, %s)<cr>' % (thread, page, perpage)) # allow refreshing
@@ -299,6 +332,9 @@ def lima_thread_write(thread):
 	vim.command('let &undolevels = %s' % undolevels)
 	vim.command('autocmd BufWriteCmd <buffer> py lima_thread_save("%s")' % thread)
 	vim.command(':runtime ftplugin/limacity.vim')
+	if vim.eval('g:limacity_spell'):
+		vim.command('setl spell')
+		vim.command('setl spelllang=de')
 	vim.command('setl nomodified')
 
 def lima_thread_save(thread):

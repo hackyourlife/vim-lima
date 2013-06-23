@@ -38,7 +38,7 @@ sy keyword	limaArg		contained		javascript perl pl php text plain py python ruby
 sy keyword	limaArg		contained		rails ror rb sass scss scala sql vb vbnet xml xhtml
 sy keyword	limaArg		contained		xslt html
 
-sy cluster	limaTop					contains=@Spell,limaTag,limaEndTag,limaLink,limaCode
+sy cluster	limaTop					contains=@Spell,limaTag,limaEndTag,limaLink,limaCode,limaQuote
 
 " Links
 sy region	limaLink				start='\[url\]'			end='\[/url\]'me=e-6	contains=limaTag
@@ -145,13 +145,13 @@ else
 	com! -nargs=+ HiLink hi def link <args>
 endif
 
-hi def htmlBold                term=bold                  cterm=bold                  gui=bold
-hi def htmlBoldUnderline       term=bold,underline        cterm=bold,underline        gui=bold,underline
-hi def htmlBoldItalic          term=bold,italic           cterm=bold,italic           gui=bold,italic
-hi def htmlBoldUnderlineItalic term=bold,italic,underline cterm=bold,italic,underline gui=bold,italic,underline
-hi def htmlUnderline           term=underline             cterm=underline             gui=underline
-hi def htmlUnderlineItalic     term=italic,underline      cterm=italic,underline      gui=italic,underline
-hi def htmlItalic              term=italic                cterm=italic                gui=italic
+hi def limaBold                term=bold                  cterm=bold                  gui=bold
+hi def limaBoldUnderline       term=bold,underline        cterm=bold,underline        gui=bold,underline
+hi def limaBoldItalic          term=bold,italic           cterm=bold,italic           gui=bold,italic
+hi def limaBoldUnderlineItalic term=bold,italic,underline cterm=bold,italic,underline gui=bold,italic,underline
+hi def limaUnderline           term=underline             cterm=underline             gui=underline
+hi def limaUnderlineItalic     term=italic,underline      cterm=italic,underline      gui=italic,underline
+hi def limaItalic              term=italic                cterm=italic                gui=italic
 
 HiLink	limaTag				Function
 HiLink	limaEndTag			Identifier
@@ -161,22 +161,19 @@ HiLink	limaTagError			Error
 
 HiLink	limaLink			Underlined
 HiLink	limaCode			Constant
+HiLink	limaQuote			Comment
 
-HiLink	limaBold			htmlBold
-HiLink	limaBoldItalic			htmlBoldItalic
-HiLink	limaBoldUnderline		htmlBoldUnderline
-HiLink	limaBoldItalicUnderline		htmlBoldUnderlineItalic
-HiLink	limaBoldUnderlineItalic		htmlBoldUnderlineItalic
-HiLink	limaItalic			htmlItalic
-HiLink	limaItalicBold			htmlBoldItalic
-HiLink	limaItalicUnderline		htmlUnderlineItalic
-HiLink	limaItalicBoldUnderline		htmlBoldUnderlineItalic
-HiLink	limaItalicUnderlineBold		htmlBoldUnderlineItalic
-HiLink	limaUnderline			htmlUnderline
-HiLink	limaUnderlineBold		htmlBoldUnderline
-HiLink	limaUnderlineItalic		htmlUnderlineItalic
-HiLink	limaUnderlineItalicBold		htmlBoldUnderlineItalic
-HiLink	limaUnderlineBoldItalic		htmlBoldUnderlineItalic
+HiLink	limaBoldItalicUnderline		limaBoldUnderlineItalic
+HiLink	limaItalic			limaItalic
+HiLink	limaItalicBold			limaBoldItalic
+HiLink	limaItalicUnderline		limaUnderlineItalic
+HiLink	limaItalicBoldUnderline		limaBoldUnderlineItalic
+HiLink	limaItalicUnderlineBold		limaBoldUnderlineItalic
+HiLink	limaUnderline			limaUnderline
+HiLink	limaUnderlineBold		limaBoldUnderline
+HiLink	limaUnderlineItalic		limaUnderlineItalic
+HiLink	limaUnderlineItalicBold		limaBoldUnderlineItalic
+HiLink	limaUnderlineBoldItalic		limaBoldUnderlineItalic
 
 delcommand HiLink
 
