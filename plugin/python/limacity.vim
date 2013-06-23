@@ -265,9 +265,12 @@ def lima_thread_open(thread, page=0, perpage=100, reload=False):
 				text += format_bbcode(node.children)
 				text += u'[/%s]' % tag
 			elif node.tag == 'link':
-				text += u'[url=%s]' % node.url
-				text += format_bbcode(node.children)
-				text += u'[/url]'
+				if len(node.children) == 1 and node.children[0].tag == 'text' and node.children[0].text == node.url:
+					text += u'[url]%s[/url]' % node.url
+				else:
+					text += u'[url=%s]' % node.url
+					text += format_bbcode(node.children)
+					text += u'[/url]'
 			elif node.tag == 'goto':
 				text += u'[url=%s]' % ('https://www.lima-city.de/thread/' + node.url if node.type == 'thread' else \
 					u'https://www.lima-city.de/%s/action:jump/%s' % (node.type, node.id))
@@ -345,7 +348,7 @@ def lima_thread_save(thread):
 		return
 	text = '\n'.join(vim.current.buffer)
 	lima.postInThread(thread, text)
-	echomsg('"%s" %dL, %dC posted' % (thread, len(vim.current.buffer), len(text)))
+	echomsg('\\"%s\\" %dL, %dC posted' % (thread, len(vim.current.buffer), len(text)))
 	vim.command('setl nomodified')
 
 def lima_boards():
